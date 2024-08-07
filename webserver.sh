@@ -8,6 +8,8 @@ if [[ $INSTALL_PM2 =~ ^[Yy]([Ee][Ss])?$ ]]; then
   echo "pm2 installed."
 fi
 
+#!/bin/bash
+
 # Install and configure Nginx
 read -p "Install Nginx? (yes/y) " INSTALL_NGINX
 if [[ $INSTALL_NGINX =~ ^[Yy]([Ee][Ss])?$ ]]; then
@@ -22,15 +24,35 @@ if [[ $INSTALL_NGINX =~ ^[Yy]([Ee][Ss])?$ ]]; then
 
   # SSL/TLS configuration
   echo "Configuring SSL/TLS..."
-  SSL_CONFIG="
-  ssl_protocols TLSv1.2 TLSv1.3;
-  ssl_prefer_server_ciphers on;
-  ssl_ciphers 'ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256';
-  ssl_session_timeout 1d;
-  ssl_session_cache shared:SSL:10m;
-  ssl_session_tickets off;
-  ssl_dhparam /etc/nginx/dhparam.pem;
-  "
+  SSL_CONFIG=""
+  if ! grep -q "ssl_protocols" /etc/nginx/nginx.conf /etc/nginx/conf.d/*; then
+    SSL_CONFIG+="
+    ssl_protocols TLSv1.2 TLSv1.3;"
+  fi
+  if ! grep -q "ssl_prefer_server_ciphers" /etc/nginx/nginx.conf /etc/nginx/conf.d/*; then
+    SSL_CONFIG+="
+    ssl_prefer_server_ciphers on;"
+  fi
+  if ! grep -q "ssl_ciphers" /etc/nginx/nginx.conf /etc/nginx/conf.d/*; then
+    SSL_CONFIG+="
+    ssl_ciphers 'ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256';"
+  fi
+  if ! grep -q "ssl_session_timeout" /etc/nginx/nginx.conf /etc/nginx/conf.d/*; then
+    SSL_CONFIG+="
+    ssl_session_timeout 1d;"
+  fi
+  if ! grep -q "ssl_session_cache" /etc/nginx/nginx.conf /etc/nginx/conf.d/*; then
+    SSL_CONFIG+="
+    ssl_session_cache shared:SSL:10m;"
+  fi
+  if ! grep -q "ssl_session_tickets" /etc/nginx/nginx.conf /etc/nginx/conf.d/*; then
+    SSL_CONFIG+="
+    ssl_session_tickets off;"
+  fi
+  if ! grep -q "ssl_dhparam" /etc/nginx/nginx.conf /etc/nginx/conf.d/*; then
+    SSL_CONFIG+="
+    ssl_dhparam /etc/nginx/dhparam.pem;"
+  fi
   sudo mkdir -p /etc/nginx/conf.d
   echo "$SSL_CONFIG" | sudo tee /etc/nginx/conf.d/ssl.conf
 
@@ -41,8 +63,12 @@ if [[ $INSTALL_NGINX =~ ^[Yy]([Ee][Ss])?$ ]]; then
   # Limit request methods
   echo "Limiting request methods..."
   LIMIT_METHODS="
-  if (\$request_method !~ ^(GET|POST|HEAD)$ ) {
-      return 444;
+  server {
+      location / {
+          if (\$request_method !~ ^(GET|POST|HEAD)$ ) {
+              return 444;
+          }
+      }
   }
   "
   echo "$LIMIT_METHODS" | sudo tee /etc/nginx/conf.d/limit_methods.conf
@@ -71,12 +97,18 @@ if [[ $INSTALL_NGINX =~ ^[Yy]([Ee][Ss])?$ ]]; then
   "
   echo "$LOG_CONFIG" | sudo tee /etc/nginx/conf.d/logging.conf
 
-  # Restart Nginx to apply changes
-  echo "Restarting Nginx to apply changes..."
-  sudo systemctl restart nginx
-
-  echo "Nginx hardening complete."
+  # Test Nginx configuration
+  echo "Testing Nginx configuration..."
+  if sudo nginx -t; then
+    # Restart Nginx to apply changes
+    echo "Restarting Nginx to apply changes..."
+    sudo systemctl restart nginx
+    echo "Nginx hardening complete."
+  else
+    echo "Nginx configuration test failed. Please check the error messages above."
+  fi
 fi
+
 
 # Install Node.js
 read -p "Install latest Node.js version? (yes/y) " INSTALL_NODE

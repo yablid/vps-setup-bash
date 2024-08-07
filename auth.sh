@@ -135,7 +135,7 @@ echo "Setting LoginGraceTime to 2 minutes for login attempts."
 sudo sed -i 's/^#LoginGraceTime.*/LoginGraceTime 2m/' /etc/ssh/sshd_config
 
 echo "Disabling PermitRootLogin to prevent root login via SSH."
-sudo sed -i 's/^#PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config
+sudo sed -i 's/PermitRootLogin yes/PermitRootLogin no/g' /etc/ssh/sshd_config
 
 echo "Disabling PermitEmptyPasswords to prevent login with empty passwords."
 sudo sed -i 's/^#PermitEmptyPasswords.*/PermitEmptyPasswords no/' /etc/ssh/sshd_config
@@ -175,6 +175,9 @@ sudo sed -i 's/^#DebianBanner.*/DebianBanner no/' /etc/ssh/sshd_config
 
 echo "Disabling Banner to remove SSH login banner."
 sudo sed -i 's/^#Banner.*/Banner none/' /etc/ssh/sshd_config
+
+echo "Restarting ssh service..."
+sudo systemctl restart ssh
 
 verify_ssh_client_config() {
   if ! ssh -G localhost >/dev/null; then
