@@ -1,7 +1,9 @@
 #!/bin/bash
 
 read -p "Name of ssh key in ~/.ssh for root user (or return for default id_rsa): " ROOT_SSH_KEY
+ROOT_SSH_KEY=${ROOT_SSH_KEY:-id_rsa}  # Default to id_rsa if no input is given
 read -p "Name of ssh key in ~/.ssh for new user (return for default id_rsa): " USER_SSH_KEY
+USER_SSH_KEY=${USER_SSH_KEY:-id_rsa}  # Default to id_rsa if no input is given
 read -p "Enter host IP: " HOST_IP
 
 # Update and upgrade packages
@@ -61,6 +63,22 @@ ssh_works() {
     case $RESPONSE in
       [yY][eE][sS]|[yY])
         break
+        ;;
+      [nN][oO]|[nN])
+        echo "SSH connection failed. Do you want to retry or exit?"
+        read -p "Retry (r) or Exit (e): " RETRY_CHOICE
+        case $RETRY_CHOICE in
+          [rR])
+            echo "Retrying SSH connection..."
+            ;;
+          [eE])
+            echo "Exiting script. Please check your SSH setup and try again."
+            exit 1
+            ;;
+          *)
+            echo "Invalid choice. Retrying..."
+            ;;
+        esac
         ;;
       *)
         echo "Please confirm you successfully connected via SSH."
